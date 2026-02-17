@@ -30,6 +30,19 @@
             </div>
         </div>
 
+        <h3 class="mt-4">Search Student</h3>
+
+<form method="GET" action="/" class="row g-3 mb-4">
+    <div class="col-md-10">
+        <input type="text" name="search" class="form-control" placeholder="Enter student name">
+    </div>
+
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-dark w-100">Search</button>
+    </div>
+</form>
+
+
         <h3 class="mt-4">Add Student</h3>
 
 <form action="/add" method="POST" class="row g-3 mb-4">
@@ -54,23 +67,37 @@
                 <tr>
                     <th>Name</th>
                     <th>Marks</th>
+                    <th>Action</th>
                 </tr>
             </thead>
 
             <tbody>
-                {% for name, mark in students.items() %}
-                <tr>
-                    <td>{{ name }}</td>
-                    <td>{{ mark }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+    {% for name, mark in students.items() %}
+    <tr>
+        <td>{{ name }}</td>
+        <td>{{ mark }}</td>
+        <td>
+            <form action="/delete" method="POST" style="display:inline;">
+                <input type="hidden" name="name" value="{{ name }}">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
+
         </table>
-        <h3 class="mt-5 text-center">Performance Chart</h3>
+        {% if students %}
+<h3 class="mt-5 text-center">Performance Chart</h3>
 
 <div class="text-center">
     <img src="{{ url_for('static', filename='chart.png') }}" class="img-fluid mt-3">
 </div>
+{% else %}
+<p class="text-center text-danger mt-4">No student found.</p>
+{% endif %}
+
 
 
     </div>

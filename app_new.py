@@ -1,22 +1,54 @@
-from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 import matplotlib.pyplot as plt
 import sqlite3
-from flask import Flask, render_template, request, redirect, send_file
+from flask import Flask, render_template, request, redirect, send_file, session
 import matplotlib
 matplotlib.use("Agg")
 
 app = Flask(__name__)
+app.secret_key = "studentanalyticssecret"
 
-# ---------------- HOME PAGE ----------------
+# ---------------- LOGIN ----------------
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username == "admin" and password == "1234":
+            session["user"] = username
+            session["role"] = "admin"
+            return redirect("/")
+
+        elif username == "student" and password == "1234":
+            session["user"] = username
+            session["role"] = "viewer"
+            return redirect("/")
+
+        else:
+            return render_template("login.html", error="Invalid Username or Password")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+
+# ---------------- HOME ----------------
 @app.route("/")
 def home():
+    if "user" not in session:
+        return redirect("/login")
+
     students = {}
     search = request.args.get("search")
 
-    # connect database
     conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
 
@@ -29,7 +61,6 @@ def home():
     rows = cursor.fetchall()
     conn.close()
 
-    # store in dictionary
     for row in rows:
         students[row[0]] = row[1]
 
@@ -51,7 +82,7 @@ def home():
         else:
             grades[name] = "F"
 
-    # create chart
+    # chart
     if students:
         names = list(students.keys())
         marks = list(students.values())
@@ -71,51 +102,51 @@ def home():
                            search=search,
                            grades=grades)
 
-# ---------------- ADD STUDENT ----------------
 
-
+# ---------------- ADD ----------------
 @app.route("/add", methods=["POST"])
 def add_student():
+    if session.get("role") != "admin":
+        return redirect("/")
+
     name = request.form["name"]
     marks = request.form["marks"]
 
     conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
-
     cursor.execute(
         "INSERT OR REPLACE INTO students(name, marks) VALUES(?, ?)", (name, marks))
-
     conn.commit()
     conn.close()
 
     return redirect("/")
 
-# ---------------- DELETE STUDENT ----------------
 
-
+# ---------------- DELETE ----------------
 @app.route("/delete", methods=["POST"])
 def delete_student():
+    if session.get("role") != "admin":
+        return redirect("/")
+
     name = request.form["name"]
 
     conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
-
     cursor.execute("DELETE FROM students WHERE name=?", (name,))
-
     conn.commit()
     conn.close()
 
     return redirect("/")
 
+
 # ---------------- EDIT PAGE ----------------
-
-
 @app.route("/edit/<name>")
 def edit_student(name):
+    if session.get("role") != "admin":
+        return redirect("/")
 
     conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
-
     cursor.execute("SELECT marks FROM students WHERE name=?", (name,))
     row = cursor.fetchone()
     conn.close()
@@ -124,28 +155,27 @@ def edit_student(name):
 
     return render_template("edit.html", name=name, marks=marks)
 
-# ---------------- UPDATE STUDENT ----------------
 
-
+# ---------------- UPDATE ----------------
 @app.route("/update", methods=["POST"])
 def update_student():
+    if session.get("role") != "admin":
+        return redirect("/")
+
     name = request.form["name"]
     new_marks = request.form["marks"]
 
     conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
-
     cursor.execute("UPDATE students SET marks=? WHERE name=?",
                    (new_marks, name))
-
     conn.commit()
     conn.close()
 
     return redirect("/")
 
-# ---------------- DOWNLOAD PDF ----------------
 
-
+# ---------------- PDF DOWNLOAD ----------------
 @app.route("/download")
 def download_report():
     file_path = "report.pdf"
@@ -169,10 +199,9 @@ def download_report():
         y -= 25
 
     c.save()
-
     return send_file(file_path, as_attachment=True)
 
 
-# ---------------- RUN APP ----------------
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run()

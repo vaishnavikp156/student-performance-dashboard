@@ -11,7 +11,6 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     students = {}
-
     search = request.args.get("search")
 
     # read csv
@@ -31,6 +30,20 @@ def home():
     average = sum(students.values()) / len(students) if students else 0
     topper = max(students, key=students.get) if students else "None"
 
+    # grade calculation
+    grades = {}
+    for name, mark in students.items():
+        if mark >= 90:
+            grades[name] = "A"
+        elif mark >= 75:
+            grades[name] = "B"
+        elif mark >= 60:
+            grades[name] = "C"
+        elif mark >= 50:
+            grades[name] = "D"
+        else:
+            grades[name] = "F"
+
     # create chart
     if students:
         names = list(students.keys())
@@ -48,7 +61,8 @@ def home():
                            students=students,
                            average=average,
                            topper=topper,
-                           search=search)
+                           search=search,
+                           grades=grades)
 
 @app.route("/add", methods=["POST"])
 def add_student():
@@ -77,7 +91,6 @@ def delete_student():
         writer.writerows(rows)
 
     return redirect("/")
-
 
 if __name__ == "__main__":
     app.run()
